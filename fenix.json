@@ -1,0 +1,673 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "3.0.0",
+    "title": "Fenix Web Server API",
+    "description": "[Fenix Web Server](https://fenixwebserver.com) ships with a web API. It's designed for workflow automation, customization, and integrating with other desktop tools. The following API features are available:\n\n### Core Edition (Free)\n\n- Create/Delete Servers\n- Share/Unshare Servers\n- Start/Stop Servers\n- Toggle Server Configuration\n- List All Servers\n- Quit Fenix (Close the app)\n\n### PRO Edition\n\n- All Core Features\n- Create/Delete Custom Headers\n- Enable/Disable SSL (HTTPS) Servers\n- Regenerate SSL Certificates\n\n## How to Use This Documentation Interactively\n\nBy default, the API is secured using token-based authentication, following the `Bearer token` syntax. Fenix also supports Basic Authentication (username/password) and the ability to disable authentication. These settings are available in the Fenix preferences (available from the main menu), as shown below.\n\n![API Authentication Preferences](https://cdn.author.io/fenix/docs/preferences-api-security.png \"API Authentication Preferences\")\n\nThis documentation portal will connect to a running instance of Fenix Web Server, allowing you to create real API calls right from this page. Be aware that any actions taken will _actually affect Fenix_.\n\n### Authorizing This Page\n\nThere is a green `Authorize` button below. Click it to enter your Fenix API authentication credentials from the preferences screen. If you're using the default Bearer Authentication (token), you must pass the word `Bearer` in front of the token. \n\n### Example: \n\n`Bearer c3d09593-ca1e-47c5-b653-27ebd68d7f1e`\n"
+  },
+  "host": "localhost:33649",
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "basePath": "/",
+  "produces": [
+    "application/json"
+  ],
+  "securityDefinitions": {
+    "Bearer": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
+    },
+    "BasicAuth": {
+      "description": "All requests coming from a web application must provide a token in the\n`Authorization` header to gain access to an endpoint.\n",
+      "type": "basic"
+    }
+  },
+  "security": [
+    {
+      "Bearer": []
+    },
+    {
+      "BasicAuth": []
+    }
+  ],
+  "paths": {
+    "/servers": {
+      "get": {
+        "summary": "List servers.",
+        "description": "Provides a list of all servers managed by Fenix.\n",
+        "tags": [
+          "Servers"
+        ],
+        "responses": {
+          "200": {
+            "description": "An array of servers.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/LocalServer"
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/server": {
+      "post": {
+        "summary": "Create a new server.",
+        "description": "Create a new server. Many attributes can be set at the same time. By default,\nthe new server will react according to the preferences unless overridden. For example,\nif global preferences specify servers should **not** automatically start,\nan attribute can be provided to start this new instance automatically.\n",
+        "tags": [
+          "Servers"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/ServerInput"
+            },
+            "required": true
+          }
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "The server was created successfully.",
+            "schema": {
+              "$ref": "#/definitions/LocalServer"
+            }
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    },
+    "/server/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "The unique local server ID.",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "get": {
+        "summary": "Retrieve a local server.",
+        "description": "Retrieve the details for a specific server.",
+        "tags": [
+          "Servers"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the detailed data for the local server.",
+            "schema": {
+              "$ref": "#/definitions/LocalServer"
+            }
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "404": {
+            "description": "The server cannot be found or does not exist."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an existing server.",
+        "description": "Permanently remove a server. By default, this will not remove directories\nor log files.\n",
+        "tags": [
+          "Servers"
+        ],
+        "parameters": [
+          {
+            "name": "deletelog",
+            "type": "boolean",
+            "in": "query",
+            "description": "Defaults to `false`. Set to `true` to delete the log file associated with the server."
+          },
+          {
+            "name": "deleteroot",
+            "type": "boolean",
+            "in": "query",
+            "description": "Defaults to `false`. Set to `true` to delete web root directories associated with the server.\n**CAUTION:** This cannot be undone. All files and directories within ANY webroot of the server\nwill be deleted.\n"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully deleted the server."
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "404": {
+            "description": "The server cannot be found or does not exist."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    },
+    "/server/{id}/start": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "The unique local server ID.",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "put": {
+        "summary": "Start a server.",
+        "description": "Launch the server.",
+        "tags": [
+          "Servers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Started successfully."
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "404": {
+            "description": "The server cannot be found or does not exist."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    },
+    "/server/{id}/stop": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "The unique local server ID.",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "put": {
+        "summary": "Stop the local server.",
+        "description": "Close the local site.",
+        "tags": [
+          "Servers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Stopped successfully."
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "404": {
+            "description": "The server cannot be found or does not exist."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    },
+    "/server/{id}/share": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "The unique local server ID.",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "put": {
+        "summary": "Share the server.",
+        "description": "Create an SSH tunnel to allow public viewing of the local site. This automatically starts\nthe server if it isn't already running.\n",
+        "tags": [
+          "Servers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared successfully. Returns the public URL as text."
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "404": {
+            "description": "The server cannot be found or does not exist."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    },
+    "/server/{id}/unshare": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "The unique local server ID.",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "put": {
+        "summary": "Stop sharing the local server.",
+        "description": "Close an SSH tunnel to prevent public viewing of the local site.",
+        "tags": [
+          "Servers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Share successfully dropped."
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "404": {
+            "description": "The server cannot be found or does not exist."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    },
+    "/server/{id}/{plugin}/{action}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "The unique local server ID.",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "plugin",
+          "in": "path",
+          "description": "The plugin to apply an action to. Valid options include:\n- ssl (PRO Editions Only)\n- markdown\n- json\n- xml\n- yml\n- minifyjs\n- minifycss\n- cors\n- gzip\n- filebrowser\n",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "action",
+          "in": "path",
+          "description": "The action to perform. This can be `enable` or `disable`.",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "put": {
+        "summary": "Apply an action or modify a plugin setting for a server.",
+        "description": "This is primarily used to change webserver settings on the fly (enabling/disabling\nan operation). This endpoint only toggles operations. It is not responsible for\nconfiguring operations, which is an activity reserved for the GUI.\n",
+        "tags": [
+          "Servers"
+        ],
+        "responses": {
+          "200": {
+            "description": "The operation completed successfully."
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "404": {
+            "description": "The server cannot be found or does not exist."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    },
+    "/server/{id}/header": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "The unique local server ID.",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "post": {
+        "summary": "Create a custom header.",
+        "description": "Create a new unique custom header. Duplicates will be ignored.",
+        "tags": [
+          "Headers (PRO)"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/Header"
+            },
+            "required": true
+          }
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "The custom header was created successfully."
+          },
+          "205": {
+            "description": "The header already exists."
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    },
+    "/server/{id}/header/{header}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "The unique local server ID.",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "header",
+          "in": "path",
+          "description": "The header name, such as `X-REQUESTED-BY`.",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "delete": {
+        "summary": "Delete a custom header.",
+        "description": "Delete a specific custom header.",
+        "tags": [
+          "Headers (PRO)"
+        ],
+        "responses": {
+          "200": {
+            "description": "The operation completed successfully."
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "404": {
+            "description": "The server cannot be found or does not exist."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    },
+    "/ca/enable": {
+      "put": {
+        "summary": "Enable the certificate authority.",
+        "description": "Turn on the Fenix CA.",
+        "tags": [
+          "CA (PRO)"
+        ],
+        "responses": {
+          "200": {
+            "description": "The operation completed successfully."
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "404": {
+            "description": "The server cannot be found or does not exist."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    },
+    "/ca/disable": {
+      "put": {
+        "summary": "Disable the certificate authority.",
+        "description": "Turn off the Fenix CA. This will also disable SSL on every Fenix web server.",
+        "tags": [
+          "CA (PRO)"
+        ],
+        "responses": {
+          "200": {
+            "description": "The operation completed successfully."
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "404": {
+            "description": "The server cannot be found or does not exist."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    },
+    "/ca/regenerate": {
+      "put": {
+        "summary": "Regenerate SSL/TLS certificates.",
+        "description": "Automatically regenerate all of the SSL/TLS certificates, including\nthe Fenix CA root certificate. This process will silently restart any servers using SSL/TLS.\n",
+        "tags": [
+          "CA (PRO)"
+        ],
+        "responses": {
+          "200": {
+            "description": "The operation completed successfully."
+          },
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "404": {
+            "description": "The server cannot be found or does not exist."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    },
+    "/quit": {
+      "post": {
+        "summary": "Quit Fenix.",
+        "description": "Forcibly shuts down Fenix. This will always return a `500` error because the API has shut itself\ndown before a response can be sent.\n",
+        "tags": [
+          "Application"
+        ],
+        "responses": {
+          "400": {
+            "description": "Malformed request. Details are provided in the plain text response body."
+          },
+          "404": {
+            "description": "The server cannot be found or does not exist."
+          },
+          "500": {
+            "description": "Server side error. A detailed plain text message will be provided in the response body."
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Header": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "The custom header field."
+        },
+        "value": {
+          "type": "string",
+          "description": "The custom header value."
+        }
+      }
+    },
+    "LocalServer": {
+      "type": "object",
+      "properties": {
+        "href": {
+          "type": "string",
+          "description": "The URL of the server."
+        },
+        "id": {
+          "type": "string",
+          "description": "The unique ID of the server."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the server. This can be `online`, `shared`, `offline`, or `problem`.\n"
+        },
+        "name": {
+          "type": "string",
+          "description": "The descriptive name of the server."
+        },
+        "port": {
+          "type": "number",
+          "description": "The port allocated to the server."
+        },
+        "https": {
+          "type": "boolean",
+          "description": "Indicates the server is running with SSL enabled."
+        },
+        "publicUrl": {
+          "type": "string",
+          "description": "If the server is **not** shared, this object will be `null`. Otherwise it will be the URL\nby which the public can access the server.\n"
+        },
+        "headers": {
+          "type": "object",
+          "description": "All custom headers applied to each request."
+        },
+        "root": {
+          "type": "array",
+          "description": "An ordered array of root directories associated with the server.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "defaultFiles": {
+          "type": "array",
+          "description": "An ordered array of default files served, such as `index.html`, `default.html`, etc.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "logfile": {
+          "type": "string",
+          "description": "The logfile path."
+        },
+        "plugins": {
+          "type": "object",
+          "description": "The boolean state of each plugin (true/false).",
+          "properties": {
+            "ssl": {
+              "type": "boolean",
+              "description": "SSL/TLS is active for this server."
+            },
+            "markdown": {
+              "type": "boolean",
+              "description": "Indicates markdown rendering is on."
+            },
+            "prettyjson": {
+              "type": "boolean",
+              "description": "Indicates JSON will be rendered as an interactive and visually pleasing HTML page."
+            },
+            "prettyxml": {
+              "type": "boolean",
+              "description": "Indicates XML will be rendered in an interactive and visually pleasing HTML page."
+            },
+            "prettyyml": {
+              "type": "boolean",
+              "description": "Indicates YAML/YML will be rendered in an interactive and visually pleasing HTML page."
+            },
+            "minifyjs": {
+              "type": "boolean",
+              "description": "Indicates JavaScript files will be minified whenever possible."
+            },
+            "minifycss": {
+              "type": "boolean",
+              "description": "Indicates CSS files will be minified whenever possible."
+            },
+            "cors": {
+              "type": "boolean",
+              "description": "CORS is active for this server."
+            },
+            "etags": {
+              "type": "boolean",
+              "description": "Indicates ETag headers will be used."
+            },
+            "gzip": {
+              "type": "boolean",
+              "description": "Indicates GZip compression will be used on all results."
+            },
+            "filebrowser": {
+              "type": "boolean",
+              "description": "Indicates the filebrowser is available."
+            }
+          }
+        }
+      }
+    },
+    "ServerInput": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "array",
+          "description": "An ordered array of webroot directories.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
